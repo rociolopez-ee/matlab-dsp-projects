@@ -1,0 +1,80 @@
+clear; 
+clc; 
+close all;
+N = 5000;                      
+fs = 29927; 
+t = (0:N-1) / fs;
+x = 0.1*sin(2*pi*785*t) + 0.1*sin(2*pi*1031*t);
+a = 0.6;
+
+figure;
+plot(t, x);
+xlabel('Time (s)');
+ylabel('x[n]');
+title('Part III: Discrete-time signal x[n]');
+
+omega = linspace(0,pi,N);
+H = (1-exp(-1j*omega))./(1-a*exp(-1j*omega));
+K = 1/(max(abs(H)));
+fprintf('L-infinity scaling factor K = %.4f\n', K);
+
+D = 8; 
+xQ = round(x*2^D)/2^D;
+
+yQ = zeros(1, N);
+for n = 2:N
+    temp = K * xQ(n) - a * yQ(n-1);
+    yQ(n) = round(temp * 2^D) / 2^D; 
+end
+
+y_ideal = zeros(1, N);
+for n = 2:N
+    y_ideal(n) = K * x(n) - a * y_ideal(n-1);  % No quantization
+end
+
+e = yQ - y_ideal;
+P_e = var(e);
+P_y = var(y_ideal);
+SQNR = 10 * log10(P_y/P_e);
+fprintf('SQNR (8 bits) = %.2f dB\n', SQNR);
+
+delta = 1/(2^D);
+P_theoretical = delta.^2 /12;
+SQNR_theo = 10 * log10(P_y/P_theoretical);
+fprintf('Theoretical SQNR (8 bits) = %.2f dB\n', SQNR_theo);
+
+Y = fft(yQ);
+f = fs * (0:N-1)/N;
+half_N = floor(N/2);
+Y_half = Y(1:half_N) / N;
+f_half = f(1:half_N);
+
+figure
+plot(f_half, abs(Y_half));
+title('Magnitude Spectrum of y_Q[n] 8 bits');
+xlabel('Frequency (Hz)');
+ylabel('|Y(f)|');
+
+a9 = 0.95;
+H9 = (1-exp(-1j*omega))./(1-a9*exp(-1j*omega));
+K9 =  1/max(abs(H9));
+fprintf('L-infinity when a = 0.95 scaling factor K = %.4f\n', K9);
+yQ9 = zeros(1, N);
+
+for n = 2:N
+    temp = K9 * xQ(n) - a9 * yQ9(n-1);
+    yQ9(n) = round(temp * 2^D) / 2^D; 
+end
+
+y_ideal9 = zeros(1, N);
+for n = 2:N
+    y_ideal9(n) = K9 * x(n) - a9 * y_ideal9(n-1);  
+end
+e9 = yQ9 - y_ideal9;
+
+P_e9 = var(e9);
+P_y9 = var(y_ideal9);
+SQNR9 = 10 * log10(P_y9/P_e9);
+fprintf('SQNR (8 bits and a = 0.95) = %.2f dB\n', SQNR9);
+SQNR_theo9 = 10 * log10(P_y9/P_theoretical);
+fprintf('Theoretical SQNR (8 bits and a = 0.95) = %.2f dB\n', SQNR_theo9);
